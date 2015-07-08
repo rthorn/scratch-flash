@@ -329,7 +329,7 @@ public class ScratchRuntime {
 				if (position>=frames.length) {
 					break;
 				}
-				baFlvEncoder.addFrame(frames[position]),sounds[position]);
+				baFlvEncoder.addFrame(frames[position],sounds[position]);
 				frames[position]=null;
 				sounds[position]=null;
 				position++;

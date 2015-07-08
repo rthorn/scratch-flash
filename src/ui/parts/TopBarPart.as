@@ -43,6 +43,7 @@ public class TopBarPart extends UIPart {
 
 	protected var fileMenu:IconButton;
 	protected var editMenu:IconButton;
+	protected var stop:IconButton;
 
 	private var copyTool:IconButton;
 	private var cutTool:IconButton;
@@ -212,6 +213,7 @@ public class TopBarPart extends UIPart {
 			if (extensionDevManager) {
 				extensionLabel.text = extensionDevManager.getExperimentalExtensionNames().join(', ');
 			}
+		}
 		addChild(stop);
 		if (!app.runtime.recording) {
 			removeChild(stop);

@@ -580,7 +580,7 @@ public class ScratchStage extends ScratchObj {
 		var bm1:BitmapData;
 		var mask:uint = 0x00F8F8F0;
 		if(Scratch.app.isIn3D) {
-			SCRATCH::allow3d {
+			if (SCRATCH::allow3d) {
 				bm1 = Scratch.app.render3D.getOtherRenderedChildren(s, 1);
 			}
 		}
