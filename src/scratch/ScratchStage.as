@@ -228,6 +228,25 @@ public class ScratchStage extends ScratchObj {
 		m.addItem('save picture of stage', saveScreenshot);
 		return m;
 	}
+	
+	public function saveScreenData():BitmapData {
+		var bm:BitmapData = new BitmapData(STAGEW,STAGEH, false);
+		if (videoImage) videoImage.visible = false;
+
+		// Get a screenshot of the stage
+		if (SCRATCH::allow3d) {
+			if(Scratch.app.isIn3D) {
+				Scratch.app.render3D.getRender(bm);
+			}
+			else bm.draw(this);
+		}
+		else {
+			bm.draw(this);
+		}
+
+		if (videoImage) videoImage.visible = true;
+		return bm;
+	}
 
 	private function saveScreenshot():void {
 		var bitmapData:BitmapData = new BitmapData(STAGEW, STAGEH, true, 0);

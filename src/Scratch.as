@@ -1009,10 +1009,19 @@ public class Scratch extends Sprite {
 
 		m.showOnStage(stage, b.x, topBarPart.bottom() - 1);
 	}
+	
+	public function stopVideo(b:*):void {
+		runtime.stopVideo();
+	}
 
 	protected function addFileMenuItems(b:*, m:Menu):void {
 		m.addItem('Load Project', runtime.selectProjectFile);
 		m.addItem('Save Project', exportProjectToFile);
+		if (runtime.recording) {
+			m.addItem('Stop Video', runtime.stopVideo);
+		} else {
+			m.addItem('Export to Video', runtime.exportToVideo);
+		}
 		if (canUndoRevert()) {
 			m.addLine();
 			m.addItem('Undo Revert', undoRevert);

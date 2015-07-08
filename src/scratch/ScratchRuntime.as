@@ -29,17 +29,19 @@ import flash.net.*;
 import flash.system.System;
 import flash.text.TextField;
 import flash.utils.*;
+import sound.*;
 import blocks.Block;
 import blocks.BlockArg;
 import interpreter.*;
 import primitives.VideoMotionPrims;
-import sound.ScratchSoundPlayer;
 import translation.*;
 import ui.media.MediaInfo;
 import ui.BlockPalette;
 import uiwidgets.DialogBox;
+import ui.RecordingSpecEditor;
 import util.*;
 import watchers.*;
+import leelib.util.flvEncoder.*;
 
 public class ScratchRuntime {
 
@@ -70,15 +72,25 @@ public class ScratchRuntime {
 	//------------------------------
 
 	public function stepRuntime():void {
-		if (projectToInstall != null && (app.isOffline || app.isExtensionDevMode)) {
+		if (projectToInstall != null && app.isOffline) {
 			installProject(projectToInstall);
 			if (saveAfterInstall) app.setSaveNeeded(true);
 			projectToInstall = null;
 			saveAfterInstall = false;
 			return;
 		}
-
-		if (recording) saveFrame(); // Recording a YouTube video?  Old / Unused currently.
+		
+		if (recording) { // Recording a YouTube video?
+			saveFrame();
+			if (!writeAfter) {
+				if (frames.length>position) {
+					baFlvEncoder.addFrame(frames[position],sounds[position]);
+					frames[position]=null;
+					sounds[position]=null;
+					position++;
+				}
+			}
+		}
 		app.extensionManager.step();
 		if (motionDetector) motionDetector.step(); // Video motion detection
 
@@ -94,45 +106,277 @@ public class ScratchRuntime {
 //-------- recording test ---------
 	public var recording:Boolean;
 	private var frames:Array = [];
+	private var sounds:Array = [];
+	private var recTimer:Timer;
+	private var baFlvEncoder:ByteArrayFlvEncoder;
+	private var position:int;
+	private var secs:int;
+	private var pSound:Boolean;
+	private var mSound:Boolean;
+	private var mBytes:Array;
+	private var mPosition:int = 0;
+	private var mic:Microphone;
+	private var fullEditor:Boolean;
+	private var writeAfter:Boolean;
+	private var timeout:uint;
+	//if writeAfter
+	private var extraFrames:int = 0;
+	private var dataArray:Array = [];
+	private var floats:Array = [];
+	private var lastActive:Array = [];
+	private var place:int = 0;
+	private var current:Array = [];
+	private var currentIndex:Array = [];
+	private var extraTime:Number = 0;
 
 	private function saveFrame():void {
-		var f:BitmapData = new BitmapData(480, 360);
-		f.draw(app.stagePane);
-		frames.push(f);
+		saveSound();
+		var t:Number = getTimer()*.001-secs;
+		while (t>sounds.length/30.0+1/30.0) {
+			saveSound();
+		}
+		var f:BitmapData;
+		if (fullEditor) {
+			f = new BitmapData(app.stage.stageWidth, app.stage.stageHeight,false);
+			f.draw(app.stage);
+		}
+		else {
+			f = app.stagePane.saveScreenData();
+		}
+		while (sounds.length>frames.length) {
+			frames.push(f);
+		}
 		if ((frames.length % 100) == 0) {
 			trace('frames: ' + frames.length + ' mem: ' + System.totalMemory);
 		}
 	}
+	
+	private function saveSound():void {
+		var floats:Array = [];
+		if (mSound && mic.activityLevel>=0) {
+			while (mBytes.length>mPosition && floats.length<=baFlvEncoder.audioFrameSize/4) {
+				floats.push(mBytes[mPosition]);
+				mBytes[mPosition]=null;
+				mPosition++;
+			}
+		}
+		while (floats.length<=baFlvEncoder.audioFrameSize/4) {
+			floats.push(0);
+		}
+		if (pSound) {
+			for (var p:int = 0; p<ScratchSoundPlayer.activeSounds.length; p++) {
+				var index:int = 0;
+				if (ScratchSoundPlayer.activeSounds[p] is NotePlayer) {
+					var c:NotePlayer = ScratchSoundPlayer.activeSounds[p];
+					while (index<floats.length && c.readPosition<c.datumArray.length) {
+						floats[index]+=c.datumArray[c.readPosition];
+						c.datumArray[c.readPosition]=null;
+						if (p==ScratchSoundPlayer.activeSounds.length-1) {
+							if (floats[index]<-1 || floats[index]>1) {
+								var current:int = p+1+int(mSound);
+								floats[index]=floats[index]/current;
+							}
+						}
+						index++;
+						c.readPosition++;
+					}
+				}
+				else {
+					var d:ScratchSoundPlayer = ScratchSoundPlayer.activeSounds[p];
+					while (index<floats.length && d.readPosition<d.datumArray.length) {
+						floats[index]+=d.datumArray[d.readPosition];
+						d.datumArray[d.readPosition]=null;
+						if (p==ScratchSoundPlayer.activeSounds.length-1) {
+							if (floats[index]<-1 || floats[index]>1) {
+								var current1:int = p+1+int(mSound);
+								floats[index]=floats[index]/current1;
+							}
+						}
+						index++;
+						d.readPosition++;
+					}
+				}
+			}
+		}
+		var combinedStream:ByteArray = new ByteArray();
+		for each (var n:Number in floats) {
+			combinedStream.writeFloat(n);
+		}
+		floats = null;
+		sounds.push(combinedStream);
+		combinedStream = null;
+	}
+	
+	private function micSampleDataHandler(event:SampleDataEvent):void 
+	{ 
+	    while(event.data.bytesAvailable) 
+	    {
+	        var sample:Number = event.data.readFloat(); 
+	        mBytes.push(sample);  
+	        mBytes.push(sample);
+	    } 
+	} 
+	
+	public function startVideo(editor:RecordingSpecEditor):void {
+		position = 0;
+		//DialogBox.notify('Debug', 'Export to Video Called', app.stage);
+		pSound = editor.soundFlag();
+		mSound = editor.microphoneFlag();
+		fullEditor = editor.editorFlag();
+		writeAfter = editor.writingFlag();
+		mBytes = [];
+		mPosition=0;
+		if (mSound) {
+			mic = Microphone.getMicrophone(); 
+			mic.setSilenceLevel(0); 
+			mic.gain = 75; 
+			mic.rate = 44; 
+			mic.addEventListener(SampleDataEvent.SAMPLE_DATA, micSampleDataHandler);
+		}
+			baFlvEncoder = new ByteArrayFlvEncoder(30);
+		if (!writeAfter) {
+			if (fullEditor) {
+				baFlvEncoder.setVideoProperties(app.stage.stageWidth, app.stage.stageHeight,VideoPayloadMakerAlchemy);
+			}
+			else {
+				baFlvEncoder.setVideoProperties(480, 360,VideoPayloadMakerAlchemy);
+			}
+			baFlvEncoder.setAudioProperties(FlvEncoder.SAMPLERATE_44KHZ, true, true, true);
+			baFlvEncoder.start()
+		}
+		else {
+			if (fullEditor) {
+				baFlvEncoder.setVideoProperties(app.stage.stageWidth, app.stage.stageHeight);//,VideoPayloadMakerAlchemy);
+			}
+			else {
+				baFlvEncoder.setVideoProperties(480, 360);//,VideoPayloadMakerAlchemy);
+			}
+			baFlvEncoder.setAudioProperties(FlvEncoder.SAMPLERATE_44KHZ, true, true, true);
+		}
+		startRecording();
+		recTimer = new Timer(1000*60,1);
+    	recTimer.addEventListener(TimerEvent.TIMER, finishVideoExport);
+    	recTimer.start();
+	}
+	
+	public function exportToVideo():void {
+		var specEditor:RecordingSpecEditor = new RecordingSpecEditor();
+		function startCountdown():void {
+			startVideo(specEditor);
+		}
+		var d:DialogBox = new DialogBox(startCountdown);
+		d.addTitle('Export to Video');
+		d.addWidget(specEditor);
+		d.addAcceptCancelButtons('Start Recording');
+		d.showOnStage(app.stage, true);
+	}
+	
+	public function stopVideo():void {
+		recTimer.dispatchEvent(new TimerEvent(TimerEvent.TIMER));
+	}
+	
+	public function finishVideoExport(event:TimerEvent):void {
+		//DialogBox.notify('Counter', counter.toString(), app.stage);
+		stopRecording();
+		stopAll();
+		if (writeAfter) {
+			baFlvEncoder.start();
+		}
+		app.addLoadProgressBox("Writing video to file...");
+		timeout = setTimeout(saveRecording,1);
+	}
 
 	public function startRecording():void {
+		secs = getTimer() * 0.001;
+		for each (var playerx:ScratchSoundPlayer in ScratchSoundPlayer.activeSounds) {
+			playerx.readPosition = playerx.datumArray.length;
+		}
 		clearRecording();
 		recording = true;
+		app.topBarPart.refresh()
 	}
 
 	public function stopRecording():void {
 		recording = false;
+		app.topBarPart.refresh();
+		recTimer.stop();
+    	recTimer.removeEventListener(TimerEvent.TIMER, finishVideoExport);
+		recTimer = null;
 	}
 
 	public function clearRecording():void {
 		recording = false;
 		frames = [];
+		sounds = [];
+		mBytes = [];
+		mPosition=0;
+		if (writeAfter) {
+			extraFrames = 0;
+			dataArray = [];
+			floats = [];
+			lastActive = [];
+			place = 0;
+			current = [];
+			currentIndex = [];
+		}
 		System.gc();
 		trace('mem: ' + System.totalMemory);
 	}
 
-	// TODO: If keeping this then make it write each frame while recording AND add sound recording
 	public function saveRecording():void {
-		var myWriter:SimpleFlvWriter = SimpleFlvWriter.getInstance();
-		var data:ByteArray = new ByteArray();
-		myWriter.createFile(data, 480, 360, 30, frames.length / 30.0);
-		for (var i:int = 0; i < frames.length; i++) {
-			myWriter.saveFrame(frames[i]);
-			frames[i] = null;
+		if (frames.length>position) {
+			for (var b:int=0; b<20; b++) {
+				if (position>=frames.length) {
+					break;
+				}
+				baFlvEncoder.addFrame(frames[position]),sounds[position]);
+				frames[position]=null;
+				sounds[position]=null;
+				position++;
+			}
+			if (app.lp) app.lp.setProgress(Math.min(position / frames.length, 1)); 
+			clearTimeout(timeout);
+			timeout = setTimeout(saveRecording, 1);
+			return;
 		}
+		app.removeLoadProgressBox();
+		if (mSound) {
+			mic.removeEventListener(SampleDataEvent.SAMPLE_DATA, micSampleDataHandler);
+			mic = null;
+		}
+		baFlvEncoder.updateDurationMetadata();
 		frames = [];
-		trace('data: ' + data.length);
-		new FileReference().save(data, 'movie.flv');
+		sounds = [];
+		mBytes = [];
+		mPosition=0;
+		if (writeAfter) {
+			extraFrames = 0;
+			dataArray = [];
+			floats = [];
+			lastActive = [];
+			place = 0;
+			current = [];
+			currentIndex = [];
+		}
+		trace('data: ' + baFlvEncoder.byteArray.length);
+		function saveFile():void {
+			var file:FileReference = new FileReference();
+			file.save(baFlvEncoder.byteArray, 'movie.flv');
+			baFlvEncoder.kill();
+		}
+		var d:DialogBox = new DialogBox(saveFile, null);
+		d.addTitle("Video finished!");
+		d.addText("Download the video to your computer,\nor click cancel to delete it.");
+		d.addAcceptCancelButtons('Download');
+		d.showOnStage(app.stage);
 	}
+	/*
+	public static function makeBitmapData(byteArr:ByteArray):BitmapData {
+        byteArr.inflate();
+        var bitmapData:BitmapData = new BitmapData(480, 360,false);
+        bitmapData.setPixels(bitmapData.rect, byteArr);
+        return bitmapData;
+    }*/
 
 //----------
 	public function stopAll():void {
