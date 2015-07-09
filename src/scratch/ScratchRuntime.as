@@ -111,15 +111,19 @@ public class ScratchRuntime {
 	private var baFlvEncoder:ByteArrayFlvEncoder;
 	private var position:int;
 	private var secs:int;
+	private var alreadyDone:int;
+	
 	private var pSound:Boolean;
 	private var mSound:Boolean;
-	private var mBytes:Array;
-	private var mPosition:int = 0;
-	private var mic:Microphone;
 	private var fullEditor:Boolean;
 	private var writeAfter:Boolean;
-	private var timeout:uint;
-
+	
+	private var mBytes:ByteArray;
+	private var mPosition:int = 0;
+	private var mic:Microphone;
+	
+	private var timeout:int;
+	
 	private function saveFrame():void {
 		saveSound();
 		var t:Number = getTimer()*.001-secs;
@@ -145,11 +149,12 @@ public class ScratchRuntime {
 	private function saveSound():void {
 		var floats:Array = [];
 		if (mSound && mic.activityLevel>=0) {
-			while (mBytes.length>mPosition && floats.length<=baFlvEncoder.audioFrameSize/4) {
-				floats.push(mBytes[mPosition]);
-				mBytes[mPosition]=null;
-				mPosition++;
+			mBytes.position=mPosition;
+			while (mBytes.length>mBytes.position && floats.length<=baFlvEncoder.audioFrameSize/4) {
+				floats.push(mBytes.readFloat());
 			}
+			mPosition = mBytes.position;
+			mBytes.position = mBytes.length;
 		}
 		while (floats.length<=baFlvEncoder.audioFrameSize/4) {
 			floats.push(0);
@@ -157,36 +162,20 @@ public class ScratchRuntime {
 		if (pSound) {
 			for (var p:int = 0; p<ScratchSoundPlayer.activeSounds.length; p++) {
 				var index:int = 0;
-				if (ScratchSoundPlayer.activeSounds[p] is NotePlayer) {
-					var c:NotePlayer = ScratchSoundPlayer.activeSounds[p];
-					while (index<floats.length && c.readPosition<c.datumArray.length) {
-						floats[index]+=c.datumArray[c.readPosition];
-						c.datumArray[c.readPosition]=null;
-						if (p==ScratchSoundPlayer.activeSounds.length-1) {
-							if (floats[index]<-1 || floats[index]>1) {
-								var current:int = p+1+int(mSound);
-								floats[index]=floats[index]/current;
-							}
+				var d:ScratchSoundPlayer = ScratchSoundPlayer.activeSounds[p];
+				d.dataBytes.position = d.readPosition;
+				while (index<floats.length && d.dataBytes.position<d.dataBytes.length) {
+					floats[index]+=d.dataBytes.readFloat();
+					if (p==ScratchSoundPlayer.activeSounds.length-1) {
+						if (floats[index]<-1 || floats[index]>1) {
+							var current1:int = p+1+int(mSound);
+							floats[index]=floats[index]/current1;
 						}
-						index++;
-						c.readPosition++;
 					}
+					index++;
 				}
-				else {
-					var d:ScratchSoundPlayer = ScratchSoundPlayer.activeSounds[p];
-					while (index<floats.length && d.readPosition<d.datumArray.length) {
-						floats[index]+=d.datumArray[d.readPosition];
-						d.datumArray[d.readPosition]=null;
-						if (p==ScratchSoundPlayer.activeSounds.length-1) {
-							if (floats[index]<-1 || floats[index]>1) {
-								var current1:int = p+1+int(mSound);
-								floats[index]=floats[index]/current1;
-							}
-						}
-						index++;
-						d.readPosition++;
-					}
-				}
+				d.readPosition=d.dataBytes.position;
+				d.dataBytes.position=d.dataBytes.length;
 			}
 		}
 		var combinedStream:ByteArray = new ByteArray();
@@ -203,20 +192,17 @@ public class ScratchRuntime {
 	    while(event.data.bytesAvailable) 
 	    {
 	        var sample:Number = event.data.readFloat(); 
-	        mBytes.push(sample);  
-	        mBytes.push(sample);
+	        mBytes.writeFloat(sample);  
+	        //mBytes.writeFloat(sample);
 	    } 
 	} 
 	
 	public function startVideo(editor:RecordingSpecEditor):void {
-		position = 0;
 		//DialogBox.notify('Debug', 'Export to Video Called', app.stage);
 		pSound = editor.soundFlag();
 		mSound = editor.microphoneFlag();
 		fullEditor = editor.editorFlag();
 		writeAfter = editor.writingFlag();
-		mBytes = [];
-		mPosition=0;
 		if (mSound) {
 			mic = Microphone.getMicrophone(); 
 			mic.setSilenceLevel(0); 
@@ -232,7 +218,7 @@ public class ScratchRuntime {
 			else {
 				baFlvEncoder.setVideoProperties(480, 360,VideoPayloadMakerAlchemy);
 			}
-			baFlvEncoder.setAudioProperties(FlvEncoder.SAMPLERATE_44KHZ, true, true, true);
+			baFlvEncoder.setAudioProperties(FlvEncoder.SAMPLERATE_44KHZ, true, false, true);
 			baFlvEncoder.start()
 		}
 		else {
@@ -242,7 +228,7 @@ public class ScratchRuntime {
 			else {
 				baFlvEncoder.setVideoProperties(480, 360);//,VideoPayloadMakerAlchemy);
 			}
-			baFlvEncoder.setAudioProperties(FlvEncoder.SAMPLERATE_44KHZ, true, true, true);
+			baFlvEncoder.setAudioProperties(FlvEncoder.SAMPLERATE_44KHZ, true, false, true);
 		}
 		startRecording();
 		recTimer = new Timer(1000*60,1);
@@ -274,13 +260,14 @@ public class ScratchRuntime {
 			baFlvEncoder.start();
 		}
 		app.addLoadProgressBox("Writing video to file...");
+		alreadyDone = position;
 		timeout = setTimeout(saveRecording,1);
 	}
 
 	public function startRecording():void {
 		secs = getTimer() * 0.001;
 		for each (var playerx:ScratchSoundPlayer in ScratchSoundPlayer.activeSounds) {
-			playerx.readPosition = playerx.datumArray.length;
+			playerx.readPosition = playerx.dataBytes.length;
 		}
 		clearRecording();
 		recording = true;
@@ -299,8 +286,9 @@ public class ScratchRuntime {
 		recording = false;
 		frames = [];
 		sounds = [];
-		mBytes = [];
+		mBytes = new ByteArray();
 		mPosition=0;
+		position=0;
 		System.gc();
 		trace('mem: ' + System.totalMemory);
 	}
@@ -316,7 +304,7 @@ public class ScratchRuntime {
 				sounds[position]=null;
 				position++;
 			}
-			if (app.lp) app.lp.setProgress(Math.min(position / frames.length, 1)); 
+			if (app.lp) app.lp.setProgress(Math.min((position-alreadyDone) / (frames.length-alreadyDone), 1)); 
 			clearTimeout(timeout);
 			timeout = setTimeout(saveRecording, 1);
 			return;
@@ -329,7 +317,7 @@ public class ScratchRuntime {
 		baFlvEncoder.updateDurationMetadata();
 		frames = [];
 		sounds = [];
-		mBytes = [];
+		mBytes = null;
 		mPosition=0;
 		trace('data: ' + baFlvEncoder.byteArray.length);
 		function saveFile():void {

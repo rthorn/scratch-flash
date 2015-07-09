@@ -46,7 +46,7 @@ public class ScratchSoundPlayer {
 
 	// sound being played
 	public var scratchSound:ScratchSound;
-	public var datumArray:Array;
+	public var dataBytes:ByteArray;
 	public var readPosition:int;
 
 	// sound data, step size, and current stream position
@@ -108,12 +108,13 @@ public class ScratchSoundPlayer {
 		}
 		var i:int = activeSounds.indexOf(this);
 		if (i >= 0) activeSounds.splice(i, 1);
-		datumArray = null;
+		dataBytes = null;
 	}
 
 	public function startPlaying(doneFunction:Function = null):void {
 		readPosition=0;
-		datumArray = [];
+		dataBytes = new ByteArray();
+		dataBytes.position=0;
 		stopIfAlreadyPlaying();
 		activeSounds.push(this);
 		bytePosition = startOffset;
@@ -166,9 +167,9 @@ public class ScratchSoundPlayer {
 		for (i = 0; i < 4096; i++) {
 			var n:Number = interpolatedSample();
 			data.writeFloat(n);
-			datumArray.push(n);
+			dataBytes.writeFloat(n);
 			data.writeFloat(n);
-			datumArray.push(n);
+			//dataBytes.writeFloat(n);
 		}
 		if ((bytePosition >= endOffset) && (lastBufferTime == 0)) {
 			lastBufferTime = getTimer();
