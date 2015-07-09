@@ -72,7 +72,7 @@ public class ScratchRuntime {
 	//------------------------------
 
 	public function stepRuntime():void {
-		if (projectToInstall != null && app.isOffline) {
+		if (projectToInstall != null && (app.isOffline || app.isExtensionDevMode)) {
 			installProject(projectToInstall);
 			if (saveAfterInstall) app.setSaveNeeded(true);
 			projectToInstall = null;
@@ -119,15 +119,6 @@ public class ScratchRuntime {
 	private var fullEditor:Boolean;
 	private var writeAfter:Boolean;
 	private var timeout:uint;
-	//if writeAfter
-	private var extraFrames:int = 0;
-	private var dataArray:Array = [];
-	private var floats:Array = [];
-	private var lastActive:Array = [];
-	private var place:int = 0;
-	private var current:Array = [];
-	private var currentIndex:Array = [];
-	private var extraTime:Number = 0;
 
 	private function saveFrame():void {
 		saveSound();
@@ -310,15 +301,6 @@ public class ScratchRuntime {
 		sounds = [];
 		mBytes = [];
 		mPosition=0;
-		if (writeAfter) {
-			extraFrames = 0;
-			dataArray = [];
-			floats = [];
-			lastActive = [];
-			place = 0;
-			current = [];
-			currentIndex = [];
-		}
 		System.gc();
 		trace('mem: ' + System.totalMemory);
 	}
@@ -349,15 +331,6 @@ public class ScratchRuntime {
 		sounds = [];
 		mBytes = [];
 		mPosition=0;
-		if (writeAfter) {
-			extraFrames = 0;
-			dataArray = [];
-			floats = [];
-			lastActive = [];
-			place = 0;
-			current = [];
-			currentIndex = [];
-		}
 		trace('data: ' + baFlvEncoder.byteArray.length);
 		function saveFile():void {
 			var file:FileReference = new FileReference();
