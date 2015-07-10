@@ -169,7 +169,7 @@ public class ScratchSoundPlayer {
 			data.writeFloat(n);
 			dataBytes.writeFloat(n);
 			data.writeFloat(n);
-			//dataBytes.writeFloat(n);
+			dataBytes.writeFloat(n);
 		}
 		if ((bytePosition >= endOffset) && (lastBufferTime == 0)) {
 			lastBufferTime = getTimer();

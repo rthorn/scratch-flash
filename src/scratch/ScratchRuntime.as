@@ -193,12 +193,11 @@ public class ScratchRuntime {
 	    {
 	        var sample:Number = event.data.readFloat(); 
 	        mBytes.writeFloat(sample);  
-	        //mBytes.writeFloat(sample);
+	        mBytes.writeFloat(sample);
 	    } 
 	} 
 	
 	public function startVideo(editor:RecordingSpecEditor):void {
-		//DialogBox.notify('Debug', 'Export to Video Called', app.stage);
 		pSound = editor.soundFlag();
 		mSound = editor.microphoneFlag();
 		fullEditor = editor.editorFlag();
@@ -218,7 +217,7 @@ public class ScratchRuntime {
 			else {
 				baFlvEncoder.setVideoProperties(480, 360,VideoPayloadMakerAlchemy);
 			}
-			baFlvEncoder.setAudioProperties(FlvEncoder.SAMPLERATE_44KHZ, true, false, true);
+			baFlvEncoder.setAudioProperties(FlvEncoder.SAMPLERATE_44KHZ, true, true, true);
 			baFlvEncoder.start()
 		}
 		else {
@@ -228,7 +227,7 @@ public class ScratchRuntime {
 			else {
 				baFlvEncoder.setVideoProperties(480, 360);//,VideoPayloadMakerAlchemy);
 			}
-			baFlvEncoder.setAudioProperties(FlvEncoder.SAMPLERATE_44KHZ, true, false, true);
+			baFlvEncoder.setAudioProperties(FlvEncoder.SAMPLERATE_44KHZ, true, true, true);
 		}
 		startRecording();
 		recTimer = new Timer(1000*60,1);
@@ -253,7 +252,6 @@ public class ScratchRuntime {
 	}
 	
 	public function finishVideoExport(event:TimerEvent):void {
-		//DialogBox.notify('Counter', counter.toString(), app.stage);
 		stopRecording();
 		stopAll();
 		if (writeAfter) {
@@ -331,13 +329,6 @@ public class ScratchRuntime {
 		d.addAcceptCancelButtons('Download');
 		d.showOnStage(app.stage);
 	}
-	/*
-	public static function makeBitmapData(byteArr:ByteArray):BitmapData {
-        byteArr.inflate();
-        var bitmapData:BitmapData = new BitmapData(480, 360,false);
-        bitmapData.setPixels(bitmapData.rect, byteArr);
-        return bitmapData;
-    }*/
 
 //----------
 	public function stopAll():void {
