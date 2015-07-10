@@ -55,7 +55,6 @@ public class RecordingSpecEditor extends Sprite {
 		addCheckboxesAndLabels();
 
 		checkboxes[0].setOn(true);
-		//checkboxes[3].setOn(true);
 		showButtons(false);
 		fixLayout();
 	}
@@ -93,7 +92,7 @@ public class RecordingSpecEditor extends Sprite {
 		return checkboxes[1].isOn();
 	}
 	
-	public function writingFlag():Boolean {
+	public function mouseFlag():Boolean {
 		// True if the 'include sound from microphone' box is checked.
 		return checkboxes[3].isOn();
 	}
@@ -103,7 +102,7 @@ public class RecordingSpecEditor extends Sprite {
 		makeLabel('Include sound from project', 14),
 		makeLabel('Include sound from microphone', 14),
 		makeLabel('Record entire editor',14),
-		makeLabel('Write file after recording',14)
+		makeLabel('Show mouse clicks',14),
 		];
 		checkboxes = [
 		new IconButton(null, 'checkbox'),

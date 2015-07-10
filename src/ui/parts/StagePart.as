@@ -79,7 +79,7 @@ public class StagePart extends UIPart {
 		fixLayout();
 		addEventListener(MouseEvent.MOUSE_WHEEL, mouseWheel);
 	}
-
+	
 	public static function strings():Array {
 		return [
 			'by', 'shared', 'unshared', 'Turbo Mode',

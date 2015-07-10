@@ -79,6 +79,7 @@ public class Resources {
 	[Embed(source='cursors/growCursor.png')] private static const growCursor:Class;
 	[Embed(source='cursors/helpCursor.png')] private static const helpCursor:Class;
 	[Embed(source='cursors/shrinkCursor.png')] private static const shrinkCursor:Class;
+	[Embed(source='cursors/mouseCircle.png')] private static const mouseCircle:Class;
 	[Embed(source='UI/paint/zoomInCursor.png')] private static const zoomInCursor:Class;
 
 	// Top bar

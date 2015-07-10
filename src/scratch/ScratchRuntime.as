@@ -38,6 +38,7 @@ import translation.*;
 import ui.media.MediaInfo;
 import ui.BlockPalette;
 import uiwidgets.DialogBox;
+import uiwidgets.CursorTool;
 import ui.RecordingSpecEditor;
 import util.*;
 import watchers.*;
@@ -56,6 +57,7 @@ public class ScratchRuntime {
 
 	private var microphone:Microphone;
 	private var timerBase:uint;
+	private var tool:String;
 
 	protected var projectToInstall:ScratchStage;
 	protected var saveAfterInstall:Boolean;
@@ -79,16 +81,22 @@ public class ScratchRuntime {
 			saveAfterInstall = false;
 			return;
 		}
-		
+		if (mouse && CursorTool.tool=='click') {
+			CursorTool.setTool('');
+		}
 		if (recording) { // Recording a YouTube video?
+			if (mouse && app.gh.mouseIsDown && CursorTool.tool==null) {
+				CursorTool.setTool('click');
+			}
+			else if (mouse && CursorTool.tool==null) {
+				CursorTool.setTool('');
+			}
 			saveFrame();
-			if (!writeAfter) {
-				if (frames.length>position) {
-					baFlvEncoder.addFrame(frames[position],sounds[position]);
-					frames[position]=null;
-					sounds[position]=null;
-					position++;
-				}
+			if (frames.length>position) {
+				baFlvEncoder.addFrame(frames[position],sounds[position]);
+				frames[position]=null;
+				sounds[position]=null;
+				position++;
 			}
 		}
 		app.extensionManager.step();
@@ -115,8 +123,8 @@ public class ScratchRuntime {
 	
 	private var pSound:Boolean;
 	private var mSound:Boolean;
-	private var fullEditor:Boolean;
-	private var writeAfter:Boolean;
+	private var mouse:Boolean;
+	public var fullEditor:Boolean;
 	
 	private var mBytes:ByteArray;
 	private var mPosition:int = 0;
@@ -201,7 +209,7 @@ public class ScratchRuntime {
 		pSound = editor.soundFlag();
 		mSound = editor.microphoneFlag();
 		fullEditor = editor.editorFlag();
-		writeAfter = editor.writingFlag();
+		mouse = editor.mouseFlag();
 		if (mSound) {
 			mic = Microphone.getMicrophone(); 
 			mic.setSilenceLevel(0); 
@@ -210,25 +218,14 @@ public class ScratchRuntime {
 			mic.addEventListener(SampleDataEvent.SAMPLE_DATA, micSampleDataHandler);
 		}
 			baFlvEncoder = new ByteArrayFlvEncoder(30);
-		if (!writeAfter) {
-			if (fullEditor) {
-				baFlvEncoder.setVideoProperties(app.stage.stageWidth, app.stage.stageHeight,VideoPayloadMakerAlchemy);
-			}
-			else {
-				baFlvEncoder.setVideoProperties(480, 360,VideoPayloadMakerAlchemy);
-			}
-			baFlvEncoder.setAudioProperties(FlvEncoder.SAMPLERATE_44KHZ, true, true, true);
-			baFlvEncoder.start()
+		if (fullEditor) {
+			baFlvEncoder.setVideoProperties(app.stage.stageWidth, app.stage.stageHeight, VideoPayloadMakerAlchemy);
 		}
 		else {
-			if (fullEditor) {
-				baFlvEncoder.setVideoProperties(app.stage.stageWidth, app.stage.stageHeight);//,VideoPayloadMakerAlchemy);
-			}
-			else {
-				baFlvEncoder.setVideoProperties(480, 360);//,VideoPayloadMakerAlchemy);
-			}
-			baFlvEncoder.setAudioProperties(FlvEncoder.SAMPLERATE_44KHZ, true, true, true);
+			baFlvEncoder.setVideoProperties(480, 360, VideoPayloadMakerAlchemy);
 		}
+		baFlvEncoder.setAudioProperties(FlvEncoder.SAMPLERATE_44KHZ, true, true, true);
+		baFlvEncoder.start()
 		startRecording();
 		recTimer = new Timer(1000*60,1);
     	recTimer.addEventListener(TimerEvent.TIMER, finishVideoExport);
@@ -254,9 +251,6 @@ public class ScratchRuntime {
 	public function finishVideoExport(event:TimerEvent):void {
 		stopRecording();
 		stopAll();
-		if (writeAfter) {
-			baFlvEncoder.start();
-		}
 		app.addLoadProgressBox("Writing video to file...");
 		alreadyDone = position;
 		timeout = setTimeout(saveRecording,1);
