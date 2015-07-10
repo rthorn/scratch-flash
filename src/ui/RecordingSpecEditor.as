@@ -96,6 +96,11 @@ public class RecordingSpecEditor extends Sprite {
 		// True if the 'include sound from microphone' box is checked.
 		return checkboxes[3].isOn();
 	}
+	
+	public function fifteenFlag():Boolean {
+		// True if the 'include sound from microphone' box is checked.
+		return checkboxes[4].isOn();
+	}
 
 	private function addCheckboxesAndLabels():void {
 		checkboxLabels = [
@@ -103,8 +108,10 @@ public class RecordingSpecEditor extends Sprite {
 		makeLabel('Include sound from microphone', 14),
 		makeLabel('Record entire editor',14),
 		makeLabel('Show mouse clicks',14),
+		makeLabel('Record at 15 fps (instead of 30)',14),
 		];
 		checkboxes = [
+		new IconButton(null, 'checkbox'),
 		new IconButton(null, 'checkbox'),
 		new IconButton(null, 'checkbox'),
 		new IconButton(null, 'checkbox'),

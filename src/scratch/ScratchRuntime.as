@@ -58,6 +58,7 @@ public class ScratchRuntime {
 	private var microphone:Microphone;
 	private var timerBase:uint;
 	private var tool:String;
+	private var wait:int;
 
 	protected var projectToInstall:ScratchStage;
 	protected var saveAfterInstall:Boolean;
@@ -91,12 +92,28 @@ public class ScratchRuntime {
 			else if (mouse && CursorTool.tool==null) {
 				CursorTool.setTool('');
 			}
-			saveFrame();
-			if (frames.length>position) {
-				baFlvEncoder.addFrame(frames[position],sounds[position]);
-				frames[position]=null;
-				sounds[position]=null;
-				position++;
+			if (wait==0) {
+				saveFrame();
+				if (framerate==15.0) {
+					wait++;
+				}
+				else {
+					if (frames.length>position) {
+						baFlvEncoder.addFrame(frames[position],sounds[position]);
+						frames[position]=null;
+						sounds[position]=null;
+						position++;
+					}
+				}
+			}
+			else {
+				if (frames.length>position) {
+					baFlvEncoder.addFrame(frames[position],sounds[position]);
+					frames[position]=null;
+					sounds[position]=null;
+					position++;
+				}
+				wait--;
 			}
 		}
 		app.extensionManager.step();
@@ -125,6 +142,7 @@ public class ScratchRuntime {
 	private var mSound:Boolean;
 	private var mouse:Boolean;
 	public var fullEditor:Boolean;
+	private var framerate:Number;
 	
 	private var mBytes:ByteArray;
 	private var mPosition:int = 0;
@@ -135,7 +153,7 @@ public class ScratchRuntime {
 	private function saveFrame():void {
 		saveSound();
 		var t:Number = getTimer()*.001-secs;
-		while (t>sounds.length/30.0+1/30.0) {
+		while (t>sounds.length/framerate+1/framerate) {
 			saveSound();
 		}
 		var f:BitmapData;
@@ -210,6 +228,7 @@ public class ScratchRuntime {
 		mSound = editor.microphoneFlag();
 		fullEditor = editor.editorFlag();
 		mouse = editor.mouseFlag();
+		framerate = (editor.fifteenFlag()) ? 15.0 : 30.0;
 		if (mSound) {
 			mic = Microphone.getMicrophone(); 
 			mic.setSilenceLevel(0); 
@@ -217,7 +236,7 @@ public class ScratchRuntime {
 			mic.rate = 44; 
 			mic.addEventListener(SampleDataEvent.SAMPLE_DATA, micSampleDataHandler);
 		}
-			baFlvEncoder = new ByteArrayFlvEncoder(30);
+			baFlvEncoder = new ByteArrayFlvEncoder(framerate);
 		if (fullEditor) {
 			baFlvEncoder.setVideoProperties(app.stage.stageWidth, app.stage.stageHeight, VideoPayloadMakerAlchemy);
 		}
@@ -278,6 +297,7 @@ public class ScratchRuntime {
 		recording = false;
 		frames = [];
 		sounds = [];
+		wait = 0;
 		mBytes = new ByteArray();
 		mPosition=0;
 		position=0;
