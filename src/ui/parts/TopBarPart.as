@@ -43,7 +43,6 @@ public class TopBarPart extends UIPart {
 
 	protected var fileMenu:IconButton;
 	protected var editMenu:IconButton;
-	protected var stop:IconButton;
 
 	private var copyTool:IconButton;
 	private var cutTool:IconButton;
@@ -92,9 +91,6 @@ public class TopBarPart extends UIPart {
 		if (Scratch.app) {
 			Scratch.app.showFileMenu(Menu.dummyButton());
 			Scratch.app.showEditMenu(Menu.dummyButton());
-			if (Scratch.app.runtime.recording) {
-				return ['File', 'Edit', 'Stop', 'Tips', 'Duplicate', 'Delete', 'Grow', 'Shrink', 'Block help', 'Offline Editor'];
-			}
 		}
 		return ['File', 'Edit', 'Tips', 'Duplicate', 'Delete', 'Grow', 'Shrink', 'Block help', 'Offline Editor'];
 	}
@@ -103,9 +99,6 @@ public class TopBarPart extends UIPart {
 		if (fileMenu.parent) {
 			removeChild(fileMenu);
 			removeChild(editMenu);
-			if (app.runtime.recording) {
-				removeChild(stop);
-			}
 		}
 	}
 
@@ -155,12 +148,6 @@ public class TopBarPart extends UIPart {
 		editMenu.x = nextX;
 		editMenu.y = buttonY;
 		nextX += editMenu.width + buttonSpace;
-		
-		if (app.runtime.recording) {
-			stop.x = nextX;
-			stop.y = buttonY;
-			nextX += stop.width + buttonSpace;
-		}
 		
 		// cursor tool buttons
 		var space:int = 3;
@@ -214,19 +201,14 @@ public class TopBarPart extends UIPart {
 				extensionLabel.text = extensionDevManager.getExperimentalExtensionNames().join(', ');
 			}
 		}
-		addChild(stop);
-		if (!app.runtime.recording) {
-			removeChild(stop);
-		}
 		fixLayout();
 	}
 
 	protected function addTextButtons():void {
 		addChild(fileMenu = makeMenuButton('File', app.showFileMenu, true));
 		addChild(editMenu = makeMenuButton('Edit', app.showEditMenu, true));
-		stop = makeMenuButton('Stop', app.stopVideo, false,0xff0000);
 	}
-
+	
 	private function addToolButtons():void {
 		function selectTool(b:IconButton):void {
 			var newTool:String = '';

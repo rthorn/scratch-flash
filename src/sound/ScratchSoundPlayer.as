@@ -46,6 +46,8 @@ public class ScratchSoundPlayer {
 
 	// sound being played
 	public var scratchSound:ScratchSound;
+	
+	//video recording
 	public var dataBytes:ByteArray;
 	public var readPosition:int;
 
@@ -56,12 +58,13 @@ public class ScratchSoundPlayer {
 	protected var stepSize:Number;
 	private var adpcmBlockSize:int;
 	protected var bytePosition:int;  // use our own position to allow sound data to be shared
-	protected var soundChannel:SoundChannel;
+	public var soundChannel:SoundChannel;
 	private var lastBufferTime:uint;
 
 	// volume support
 	public var client:*;
-	protected var volume:Number = 1.0;
+	public var volume:Number = 1.0;
+	public var savedVolume:Number;
 	private var lastClientVolume:Number;
 
 	// interpolation function and state

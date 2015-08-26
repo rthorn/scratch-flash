@@ -22,7 +22,6 @@
 			<source-path path-element="${SRC_DIR}" />
 			<library-path file="${LIBS_DIR}/as3corelib.swc" />
 			<library-path file="${LIBS_DIR}/blooddy_crypto.swc" />
-			<library-path file="${LIBS_DIR}/flvEncodeHelper.swc" />
 			<library-path file="${FLEX_HOME}/frameworks/libs/framework.swc" />
 			<static-link-runtime-shared-libraries>true</static-link-runtime-shared-libraries>
 			<default-size width="800" height="600" />
@@ -33,11 +32,10 @@
 	<!-- Build and output Scratch.swf-->
 	<target name="compile" depends="test_10.2,init">
 		<mxmlc file="${SRC_DIR}/Scratch.as" output="${DEPLOY_DIR}/Scratch.swf"
-		                target-player="11.4" swf-version="17" debug="false">
+		                target-player="11.6" swf-version="19" debug="false">
 			<source-path path-element="${SRC_DIR}" />
 			<library-path file="${LIBS_DIR}/as3corelib.swc" />
 			<library-path file="${LIBS_DIR}/blooddy_crypto.swc" />
-			<library-path file="${LIBS_DIR}/flvEncodeHelper.swc" />
 			<library-path file="${FLEX_HOME}/frameworks/libs/framework.swc" />
 			<static-link-runtime-shared-libraries>true</static-link-runtime-shared-libraries>
 			<default-size width="800" height="600" />

@@ -1,4 +1,4 @@
-/*
+  /*
  * Scratch Project Editor and Player
  * Copyright (C) 2014 Massachusetts Institute of Technology
  *
@@ -24,6 +24,8 @@ package scratch {
 import flash.display.*;
 import flash.events.*;
 import flash.geom.Rectangle;
+import flash.geom.Point;
+import flash.geom.Matrix;
 import flash.media.*;
 import flash.net.*;
 import flash.system.System;
@@ -58,7 +60,6 @@ public class ScratchRuntime {
 	private var microphone:Microphone;
 	private var timerBase:uint;
 	private var tool:String;
-	private var wait:int;
 
 	protected var projectToInstall:ScratchStage;
 	protected var saveAfterInstall:Boolean;
@@ -73,7 +74,7 @@ public class ScratchRuntime {
 	// -----------------------------
 	// Running and stopping
 	//------------------------------
-
+	
 	public function stepRuntime():void {
 		if (projectToInstall != null && (app.isOffline || app.isExtensionDevMode)) {
 			installProject(projectToInstall);
@@ -85,6 +86,30 @@ public class ScratchRuntime {
 		if (mouse && CursorTool.tool=='click') {
 			CursorTool.setTool('');
 		}
+		if (ready==0) {
+			var tR:Number = getTimer()*.001-secs;
+			while (t>sounds.length/framerate+1/framerate) {
+				saveSound();
+			}
+			var count:int = 3;
+			if (tR>=3.75){
+				ready = 1;
+				sounds = [];
+				frames=[];
+			}
+			else if (tR>=2.5){
+				count=1
+			}
+			else if (tR>=1.25 && mReady) {
+				count=2;
+			}
+			else if (tR>=1.25) {
+				secs+=tR;
+			}
+			else {
+				app.refreshStagePart();
+			}
+		}
 		if (recording) { // Recording a YouTube video?
 			if (mouse && app.gh.mouseIsDown && CursorTool.tool==null) {
 				CursorTool.setTool('click');
@@ -92,28 +117,27 @@ public class ScratchRuntime {
 			else if (mouse && CursorTool.tool==null) {
 				CursorTool.setTool('');
 			}
-			if (wait==0) {
+			var t:Number = getTimer()*.001-secs;
+			//DialogBox.notify("Timing",secs.toString()+" " + t.toString() + " " + sounds.length.toString() + " "+(sounds.length/framerate+1/framerate).toString())
+			if (t>sounds.length/framerate+1/framerate) {
+				if (fullEditor) app.removeRecordingTools();
 				saveFrame();
-				if (framerate==15.0) {
-					wait++;
-				}
-				else {
-					if (frames.length>position) {
-						baFlvEncoder.addFrame(frames[position],sounds[position]);
-						frames[position]=null;
-						sounds[position]=null;
-						position++;
-					}
-				}
+				app.updateRecordingTools(t);
 			}
 			else {
+				app.updateRecordingTools(t);
 				if (frames.length>position) {
 					baFlvEncoder.addFrame(frames[position],sounds[position]);
 					frames[position]=null;
 					sounds[position]=null;
 					position++;
 				}
-				wait--;
+			}
+			if (frames.length>position && framerate==30.0) {
+				baFlvEncoder.addFrame(frames[position],sounds[position]);
+				frames[position]=null;
+				sounds[position]=null;
+				position++;
 			}
 		}
 		app.extensionManager.step();
@@ -121,21 +145,25 @@ public class ScratchRuntime {
 
 		// Step the stage, sprites, and watchers
 		app.stagePane.step(this);
-
+		
 		// run scripts and commit any pen strokes
 		processEdgeTriggeredHats();
 		interp.stepThreads();
 		app.stagePane.commitPenStrokes();
+		
+		if (ready>=0) {
+			app.stagePane.countdown(count);
+		}
 	}
 
-//-------- recording test ---------
+//-------- recording video code ---------
 	public var recording:Boolean;
 	private var frames:Array = [];
 	private var sounds:Array = [];
 	private var recTimer:Timer;
 	private var baFlvEncoder:ByteArrayFlvEncoder;
 	private var position:int;
-	private var secs:int;
+	private var secs:Number;
 	private var alreadyDone:int;
 	
 	private var pSound:Boolean;
@@ -143,23 +171,51 @@ public class ScratchRuntime {
 	private var mouse:Boolean;
 	public var fullEditor:Boolean;
 	private var framerate:Number;
+	private var width:int;
+	private var height:int;
+	public var ready:int=-1;
 	
 	private var mBytes:ByteArray;
 	private var mPosition:int = 0;
 	private var mic:Microphone;
+	private var mReady:Boolean;
 	
 	private var timeout:int;
 	
 	private function saveFrame():void {
 		saveSound();
-		var t:Number = getTimer()*.001-secs;
-		while (t>sounds.length/framerate+1/framerate) {
-			saveSound();
+		if (true) {//sounds.length>2*framerate) {
+			var t:Number = getTimer()*.001-secs;
+			while (t>sounds.length/framerate+1/framerate) {
+				saveSound();
+			}
 		}
 		var f:BitmapData;
 		if (fullEditor) {
-			f = new BitmapData(app.stage.stageWidth, app.stage.stageHeight,false);
-			f.draw(app.stage);
+			var aWidth:int = app.stage.stageWidth;
+			var aHeight:int = app.stage.stageHeight;
+			if (width!=aWidth || height!=aHeight) {
+				var scale:Number = 1.0;
+				scale = width/aWidth > height/aHeight ? height/aHeight : width/aWidth;
+				var m:Matrix = new Matrix();
+				m.scale(scale,scale);
+				f = new BitmapData(width,height,false);
+				f.draw(app.stage,m,null, null, new Rectangle(0,0,aWidth*scale,aHeight*scale),false);
+				if(Scratch.app.isIn3D) {
+					var d:BitmapData = app.stagePane.saveScreenData();
+					var borderX:int = aWidth<486 ? aWidth*scale : 486*scale;
+					var borderY:int = aHeight<432 ? aHeight*scale : 432*scale;
+					f.draw(d, new Matrix( scale, 0, 0, scale, app.stagePane.localToGlobal(new Point(0, 0)).x*scale, app.stagePane.localToGlobal(new Point(0, 0)).y*scale), null, null, new Rectangle(0,0,borderX,borderY),false);
+				}
+			}
+			else {
+				f = new BitmapData(width,height,false);
+				f.draw(app.stage,null,null,null,null,false);
+				if(Scratch.app.isIn3D) {
+					var e:BitmapData = app.stagePane.saveScreenData();
+					f.copyPixels(e, new Rectangle(0,0,486,432),new Point(app.stagePane.localToGlobal(new Point(0, 0)).x, app.stagePane.localToGlobal(new Point(0, 0)).y));
+				}
+			}
 		}
 		else {
 			f = app.stagePane.saveScreenData();
@@ -228,27 +284,46 @@ public class ScratchRuntime {
 		mSound = editor.microphoneFlag();
 		fullEditor = editor.editorFlag();
 		mouse = editor.mouseFlag();
-		framerate = (editor.fifteenFlag()) ? 15.0 : 30.0;
+		framerate = (!editor.fifteenFlag()) ? 15.0 : 30.0;
+		if (fullEditor) {
+			framerate=10.0;
+		}
+		mReady = true;
 		if (mSound) {
 			mic = Microphone.getMicrophone(); 
-			mic.setSilenceLevel(0); 
-			mic.gain = 75; 
+			mic.setSilenceLevel(0);
+			mic.gain = editor.getMicVolume(); 
 			mic.rate = 44; 
-			mic.addEventListener(SampleDataEvent.SAMPLE_DATA, micSampleDataHandler);
+			mReady=false;
 		}
-			baFlvEncoder = new ByteArrayFlvEncoder(framerate);
 		if (fullEditor) {
-			baFlvEncoder.setVideoProperties(app.stage.stageWidth, app.stage.stageHeight, VideoPayloadMakerAlchemy);
+			if (app.stage.stageWidth<960 && app.stage.stageHeight<640) {
+				width = app.stage.stageWidth;
+				height = app.stage.stageHeight;
+			}
+			else {
+				var ratio:Number = app.stage.stageWidth/app.stage.stageHeight;
+				if (960/ratio<640) {
+					width = 960;
+					height = 960/ratio;
+				}
+				else {
+					width = 640*ratio;
+					height = 640;
+				}
+			}
 		}
 		else {
-			baFlvEncoder.setVideoProperties(480, 360, VideoPayloadMakerAlchemy);
+			width = 480;
+			height = 360;
 		}
+		ready=0;
+		secs = getTimer()*.001;
+		baFlvEncoder = new ByteArrayFlvEncoder(framerate);
+		baFlvEncoder.setVideoProperties(width, height);
 		baFlvEncoder.setAudioProperties(FlvEncoder.SAMPLERATE_44KHZ, true, true, true);
-		baFlvEncoder.start()
-		startRecording();
-		recTimer = new Timer(1000*60,1);
-    	recTimer.addEventListener(TimerEvent.TIMER, finishVideoExport);
-    	recTimer.start();
+		baFlvEncoder.start();
+		waitAndStart();
 	}
 	
 	public function exportToVideo():void {
@@ -257,14 +332,19 @@ public class ScratchRuntime {
 			startVideo(specEditor);
 		}
 		var d:DialogBox = new DialogBox(startCountdown);
-		d.addTitle('Export to Video');
+		d.addTitle('Record Project Video');
 		d.addWidget(specEditor);
-		d.addAcceptCancelButtons('Start Recording');
+		d.addAcceptCancelButtons('Start Countdown');
 		d.showOnStage(app.stage, true);
 	}
 	
 	public function stopVideo():void {
-		recTimer.dispatchEvent(new TimerEvent(TimerEvent.TIMER));
+		if (recording) recTimer.dispatchEvent(new TimerEvent(TimerEvent.TIMER));
+		else if (ready>=0) {
+			ready=-1;
+			app.refreshStagePart();
+			app.stagePane.countdown(0);
+		}
 	}
 	
 	public function finishVideoExport(event:TimerEvent):void {
@@ -272,36 +352,60 @@ public class ScratchRuntime {
 		stopAll();
 		app.addLoadProgressBox("Writing video to file...");
 		alreadyDone = position;
+		clearTimeout(timeout);
 		timeout = setTimeout(saveRecording,1);
 	}
-
-	public function startRecording():void {
+	
+	public function waitAndStart():void {
+		if (!mReady && !mic.hasEventListener(StatusEvent.STATUS)) {
+			mBytes = new ByteArray();
+			mic.addEventListener(SampleDataEvent.SAMPLE_DATA, micSampleDataHandler);
+			mReady=true;
+		}
+		if (ready<1) {
+			if (ready<0) {
+				baFlvEncoder=null;
+				return;
+			}
+			clearTimeout(timeout);
+			timeout = setTimeout(waitAndStart, 1);
+			return;
+		}
+		app.stagePane.countdown(0);
+		ready=-1;
+		app.refreshStagePart();
+		var player:ScratchSoundPlayer, length:int;
 		secs = getTimer() * 0.001;
-		for each (var playerx:ScratchSoundPlayer in ScratchSoundPlayer.activeSounds) {
-			playerx.readPosition = playerx.dataBytes.length;
+		for each (player in ScratchSoundPlayer.activeSounds) {
+			length = int((player.soundChannel.position*.001)*framerate);
+			player.readPosition = Math.max(Math.min(baFlvEncoder.audioFrameSize*length,player.dataBytes.length),0);
 		}
 		clearRecording();
 		recording = true;
-		app.topBarPart.refresh()
+		var seconds:int = 60; //modify to change length of video
+		recTimer = new Timer(1000*seconds,1);
+    	recTimer.addEventListener(TimerEvent.TIMER, finishVideoExport);
+    	recTimer.start();
 	}
-
+	
 	public function stopRecording():void {
 		recording = false;
-		app.topBarPart.refresh();
 		recTimer.stop();
     	recTimer.removeEventListener(TimerEvent.TIMER, finishVideoExport);
 		recTimer = null;
+		//if (fullEditor && app.render3D) app.go3D();
+		app.refreshStagePart();
 	}
 
 	public function clearRecording():void {
 		recording = false;
 		frames = [];
 		sounds = [];
-		wait = 0;
 		mBytes = new ByteArray();
 		mPosition=0;
 		position=0;
 		System.gc();
+		ready=-1;
 		trace('mem: ' + System.totalMemory);
 	}
 
@@ -322,25 +426,30 @@ public class ScratchRuntime {
 			return;
 		}
 		app.removeLoadProgressBox();
+		baFlvEncoder.updateDurationMetadata();
 		if (mSound) {
 			mic.removeEventListener(SampleDataEvent.SAMPLE_DATA, micSampleDataHandler);
 			mic = null;
 		}
-		baFlvEncoder.updateDurationMetadata();
 		frames = [];
 		sounds = [];
 		mBytes = null;
 		mPosition=0;
-		trace('data: ' + baFlvEncoder.byteArray.length);
+		var video:ByteArray;
+		video = baFlvEncoder.byteArray;
+		baFlvEncoder.kill();
 		function saveFile():void {
 			var file:FileReference = new FileReference();
-			file.save(baFlvEncoder.byteArray, 'movie.flv');
-			baFlvEncoder.kill();
+			file.save(video, "movie.flv");
+			releaseVideo();
 		}
-		var d:DialogBox = new DialogBox(saveFile, null);
+		function releaseVideo():void {
+			video = null;
+		}
+		var d:DialogBox = new DialogBox(saveFile, releaseVideo);
 		d.addTitle("Video finished!");
-		d.addText("Download the video to your computer,\nor click cancel to delete it.");
-		d.addAcceptCancelButtons('Download');
+		d.addText("Download the video to your computer,\nor click Discard to delete it.");
+		d.addAcceptCancelButtons('Download','Discard');
 		d.showOnStage(app.stage);
 	}
 

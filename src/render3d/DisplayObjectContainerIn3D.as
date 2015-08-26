@@ -535,12 +535,11 @@ public class DisplayObjectContainerIn3D extends Sprite {SCRATCH::allow3d {
 			__context.setTextureAt(0, texture.getTexture(__context));
 			currentTexture = texture;
 		}
-		//commented out b/c next part causes import errors
-		/*var desiredTextureFilter:String = useNearest ? Context3DTextureFilter.NEAREST : Context3DTextureFilter.LINEAR;
+		var desiredTextureFilter:String = useNearest ? Context3DTextureFilter.NEAREST : Context3DTextureFilter.LINEAR;
 		if (currentTextureFilter != desiredTextureFilter) {
 			__context.setSamplerStateAt(0, Context3DWrapMode.CLAMP, desiredTextureFilter, Context3DMipFilter.MIPNONE);
 			currentTextureFilter = desiredTextureFilter;
-		}*/
+		}
 	}
 
 	private var matrixScratchpad:Vector.<Number> = new Vector.<Number>(16, true);
