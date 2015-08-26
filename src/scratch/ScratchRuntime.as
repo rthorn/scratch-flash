@@ -510,11 +510,13 @@ public class ScratchRuntime {
 		if (30 == ch) keyName = 'up arrow';
 		if (31 == ch) keyName = 'down arrow';
 		if (32 == ch) keyName = 'space';
-		if (keyName == null) return;
-		var startMatchingKeyHats:Function = function (stack:Block, target:ScratchObj):void {
-			if ((stack.op == 'whenKeyPressed') && (stack.args[0].argValue == keyName)) {
-				// only start the stack if it is not already running
-				if (!interp.isRunning(stack, target)) interp.toggleThread(stack, target);
+		function startMatchingKeyHats(stack:Block, target:ScratchObj):void {
+			if (stack.op == 'whenKeyPressed') {
+				var k:String = stack.args[0].argValue;
+				if (k == 'any' || k == keyName) {
+					// only start the stack if it is not already running
+					if (!interp.isRunning(stack, target)) interp.toggleThread(stack, target);
+				}
 			}
 		}
 		allStacksAndOwnersDo(startMatchingKeyHats);
@@ -1084,12 +1086,28 @@ public class ScratchRuntime {
 		return result;
 	}
 
+	public function renameBroadcast(oldMsg:String, newMsg:String):void {
+		if (oldMsg == newMsg) return;
+
+		if (allSendersOfBroadcast(newMsg).length > 0 ||
+			allReceiversOfBroadcast(newMsg).length > 0) {
+			DialogBox.notify("Cannot Rename", "That name is already in use.");
+			return;
+		}
+
+		for each(var obj:Block in allBroadcastBlocksWithMsg(oldMsg)) {
+				Block(obj).broadcastMsg = newMsg;
+		}
+
+		app.updatePalette();
+	}
+
 	private function sendsBroadcast(obj:ScratchObj, msg:String):Boolean {
 		for each (var stack:Block in obj.scripts) {
 			var found:Boolean;
 			stack.allBlocksDo(function (b:Block):void {
-				if ((b.op == 'broadcast:') || (b.op == 'doBroadcastAndWait')) {
-					if (b.args[0].argValue == msg) found = true;
+				if (b.op == 'broadcast:' || b.op == 'doBroadcastAndWait') {
+					if (b.broadcastMsg == msg) found = true;
 				}
 			});
 			if (found) return true;
@@ -1103,12 +1121,26 @@ public class ScratchRuntime {
 			var found:Boolean;
 			stack.allBlocksDo(function (b:Block):void {
 				if (b.op == 'whenIReceive') {
-					if (b.args[0].argValue.toLowerCase() == msg) found = true;
+					if (b.broadcastMsg.toLowerCase() == msg) found = true;
 				}
 			});
 			if (found) return true;
 		}
 		return false;
+	}
+
+	private function allBroadcastBlocksWithMsg(msg:String):Array {
+		var result:Array = [];
+		for each (var o:ScratchObj in app.stagePane.allObjects()) {
+			for each (var stack:Block in o.scripts) {
+				stack.allBlocksDo(function (b:Block):void {
+					if (b.op == 'broadcast:' || b.op == 'doBroadcastAndWait' || b.op == 'whenIReceive') {
+						if (b.broadcastMsg == msg) result.push(b);
+					}
+				});
+			}
+		}
+		return result;
 	}
 
 	public function allUsesOfBackdrop(backdropName:String):Array {
@@ -1257,8 +1289,10 @@ public class ScratchRuntime {
 		}
 		var w:DisplayObject = isList ? watcherForList(targetObj, varName) : watcherForVar(targetObj, varName);
 		if (w is ListWatcher) ListWatcher(w).prepareToShow();
-		if (w != null) showOnStage(w);
-		app.updatePalette(false);
+		if (w != null && (!w.visible || !w.parent)) {
+			showOnStage(w);
+			app.updatePalette(false);
+		}
 	}
 
 	private function showOnStage(w:DisplayObject):void {
@@ -1301,8 +1335,10 @@ public class ScratchRuntime {
 
 	public function hideVarOrListFor(varName:String, isList:Boolean, targetObj:ScratchObj):void {
 		var w:DisplayObject = isList ? watcherForList(targetObj, varName) : watcherForVar(targetObj, varName);
-		if (w != null) w.visible = false;
-		app.updatePalette(false);
+		if (w != null && w.visible) {
+			w.visible = false;
+			app.updatePalette(false);
+		}
 	}
 
 	public function watcherShowing(data:Object):Boolean {

@@ -71,7 +71,7 @@ import watchers.ListWatcher;
 
 public class Scratch extends Sprite {
 	// Version
-	public static const versionString:String = 'v438';
+	public static const versionString:String = 'v439.2';
 	public static var app:Scratch; // static reference to the app, used for debugging
 
 	// Display modes
@@ -192,7 +192,11 @@ public class Scratch extends Sprite {
 		stage.addEventListener(MouseEvent.MOUSE_UP, gh.mouseUp);
 		stage.addEventListener(MouseEvent.MOUSE_WHEEL, gh.mouseWheel);
 		stage.addEventListener('rightClick', gh.rightMouseClick);
-		stage.addEventListener(KeyboardEvent.KEY_DOWN, runtime.keyDown);
+		stage.addEventListener(KeyboardEvent.KEY_DOWN, function(evt:KeyboardEvent): void {
+			if (!evt.shiftKey && evt.charCode == 27) gh.escKeyDown();
+			else runtime.keyDown(evt);
+		});
+
 		stage.addEventListener(KeyboardEvent.KEY_UP, runtime.keyUp);
 		stage.addEventListener(KeyboardEvent.KEY_DOWN, keyDown); // to handle escape key
 		stage.addEventListener(Event.ENTER_FRAME, step);

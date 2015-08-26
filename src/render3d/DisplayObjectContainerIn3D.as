@@ -86,8 +86,9 @@ public class DisplayObjectContainerIn3D extends Sprite {SCRATCH::allow3d {
 	private var textures:Array;
 	private var testBMs:Array;
 	private var textureIndexByID:Object;
-	private static var texSizeMax:int = 4096;
+	private static var texSizeMax:int = 2048;
 	private static var texSize:int = 1024;
+	private static var maxTextures:uint = 15;
 	private var penPacked:Boolean;
 
 	/** Triangle index data */
@@ -817,7 +818,7 @@ public class DisplayObjectContainerIn3D extends Sprite {SCRATCH::allow3d {
 				scale = 1 / mosaic;
 			}
 		}
-		else if (dispObj is Bitmap) { // Remove else to allow graphics effects on video layer
+		if (dispObj is Bitmap) {
 			isNew = !bitmapsByID[id];
 			bitmapsByID[id] = (dispObj as Bitmap).bitmapData;
 			if (unrenderedChildren[dispObj] && textureIndexByID.hasOwnProperty(id)) {
@@ -939,8 +940,6 @@ public class DisplayObjectContainerIn3D extends Sprite {SCRATCH::allow3d {
 			debugTexture = !debugTexture;
 		}
 	}
-
-	private var maxTextures:uint = 5;
 
 	private function packTextureBitmaps():void {
 		var penID:String = spriteBitmaps[stagePenLayer];
@@ -1148,7 +1147,7 @@ public class DisplayObjectContainerIn3D extends Sprite {SCRATCH::allow3d {
 		var changeBackBuffer:Boolean = isIOS || (bmd.width > scissorRect.width || bmd.height > scissorRect.height);
 		if (changeBackBuffer) {
 			projMatrix = createOrthographicProjectionMatrix(bmd.width, bmd.height, 0, 0);
-			__context.configureBackBuffer(bmd.width, bmd.height, 0, false);
+			__context.configureBackBuffer(Math.max(32, bmd.width), Math.max(32, bmd.height), 0, false);
 			pScale = 1;
 		}
 
@@ -1262,7 +1261,7 @@ public class DisplayObjectContainerIn3D extends Sprite {SCRATCH::allow3d {
 			return;
 		}
 
-		setRenderView();
+		onStageResize();
 		//__context.addEventListener(Event.ACTIVATE, setupContext3D);
 		//__context.addEventListener(Event.DEACTIVATE, onContextLoss);
 
