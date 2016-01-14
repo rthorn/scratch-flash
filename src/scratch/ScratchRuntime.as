@@ -184,47 +184,92 @@ public class ScratchRuntime {
 	
 	private function saveFrame():void {
 		saveSound();
-		if (true) {//sounds.length>2*framerate) {
-			var t:Number = getTimer()*.001-secs;
-			while (t>sounds.length/framerate+1/framerate) {
-				saveSound();
-			}
+		var t:Number = getTimer()*.001-videoSeconds;
+		while (t>videoSounds.length/videoFramerate+1/videoFramerate) {
+			saveSound();
 		}
+		if (showCursor) var cursor:DisplayObject = Resources.createDO('videoCursor');
+		if (showCursor && app.gh.mouseIsDown) var circle:Bitmap = Resources.createBmp('mouseCircle');
 		var f:BitmapData;
 		if (fullEditor) {
 			var aWidth:int = app.stage.stageWidth;
 			var aHeight:int = app.stage.stageHeight;
-			if (width!=aWidth || height!=aHeight) {
+			if (!Scratch.app.isIn3D) {
+				if (app.stagePane.videoImage) app.stagePane.videoImage.visible = false;
+			}
+			if (videoWidth!=aWidth || videoHeight!=aHeight) {
 				var scale:Number = 1.0;
-				scale = width/aWidth > height/aHeight ? height/aHeight : width/aWidth;
+				scale = videoWidth/aWidth > videoHeight/aHeight ? videoHeight/aHeight : videoWidth/aWidth;
 				var m:Matrix = new Matrix();
 				m.scale(scale,scale);
-				f = new BitmapData(width,height,false);
+				f = new BitmapData(videoWidth,videoHeight,false);
 				f.draw(app.stage,m,null, null, new Rectangle(0,0,aWidth*scale,aHeight*scale),false);
 				if(Scratch.app.isIn3D) {
+					var scaled:Number = scale;
+					if (!app.editMode) {
+						scaled *= app.presentationScale;
+					}
+					else if (app.stageIsContracted) {
+						scaled*=0.5;
+					}
 					var d:BitmapData = app.stagePane.saveScreenData();
-					var borderX:int = aWidth<486 ? aWidth*scale : 486*scale;
-					var borderY:int = aHeight<432 ? aHeight*scale : 432*scale;
-					f.draw(d, new Matrix( scale, 0, 0, scale, app.stagePane.localToGlobal(new Point(0, 0)).x*scale, app.stagePane.localToGlobal(new Point(0, 0)).y*scale), null, null, new Rectangle(0,0,borderX,borderY),false);
+					f.draw(d, new Matrix( scaled, 0, 0, scaled, app.stagePane.localToGlobal(new Point(0, 0)).x*scale, app.stagePane.localToGlobal(new Point(0, 0)).y*scale));
+				}
+				else if (app.stagePane.videoImage) app.stagePane.videoImage.visible = true;
+                for (var i:int = 0; i < app.stage.numChildren; i++) {
+                    if (app.stage.getChildAt(i) is Menu) {
+                        var m1:Menu = Menu(app.stage.getChildAt(i));
+                        f.draw(m1,new Matrix(scale,0,0,scale,m1.localToGlobal(new Point(0, 0)).x*scale,m1.localToGlobal(new Point(0, 0)).y*scale));
+                    }
+                }
+				if (showCursor && app.gh.mouseIsDown) {
+					f.draw(circle,new Matrix(scale,0,0,scale,(app.stage.mouseX-circle.width/2.0)*scale,(app.stage.mouseY-circle.height/2.0)*scale));
+				}
+				if (showCursor) {
+					f.draw(cursor,new Matrix(scale,0,0,scale,app.stage.mouseX*scale,app.stage.mouseY*scale));
 				}
 			}
 			else {
-				f = new BitmapData(width,height,false);
-				f.draw(app.stage,null,null,null,null,false);
+				f = new BitmapData(videoWidth,videoHeight,false);
+				f.draw(app.stage);
 				if(Scratch.app.isIn3D) {
+					var scaler:Number = 1;
+					if (!app.editMode) {
+						scaler *= app.presentationScale;
+					}
+					else if (app.stageIsContracted) {
+						scaler*=0.5;
+					}
 					var e:BitmapData = app.stagePane.saveScreenData();
-					f.copyPixels(e, new Rectangle(0,0,486,432),new Point(app.stagePane.localToGlobal(new Point(0, 0)).x, app.stagePane.localToGlobal(new Point(0, 0)).y));
+					if (scaler==1) f.copyPixels(e, e.rect,new Point(app.stagePane.localToGlobal(new Point(0, 0)).x, app.stagePane.localToGlobal(new Point(0, 0)).y));
+					else f.draw(e, new Matrix( scaler, 0, 0, scaler, app.stagePane.localToGlobal(new Point(0, 0)).x, app.stagePane.localToGlobal(new Point(0, 0)).y));
+				}
+				else if (app.stagePane.videoImage) app.stagePane.videoImage.visible = true;
+                for (var i2:int = 0; i2 < app.stage.numChildren; i2++) {
+                    if (app.stage.getChildAt(i2) is Menu) {
+                        var m2:Menu = Menu(app.stage.getChildAt(i2));
+                        f.draw(m2,new Matrix(1,0,0,1,m2.localToGlobal(new Point(0, 0)).x,m2.localToGlobal(new Point(0, 0)).y));
+                    }
+                }
+				if (showCursor && app.gh.mouseIsDown) {
+					f.copyPixels(circle.bitmapData,circle.bitmapData.rect,new Point(app.stage.mouseX-circle.width/2.0,app.stage.mouseY-circle.height/2.0));
+				}
+				if (showCursor) {
+					f.draw(cursor,new Matrix(1,0,0,1,app.stage.mouseX,app.stage.mouseY));
 				}
 			}
 		}
 		else {
 			f = app.stagePane.saveScreenData();
+			if (showCursor && app.gh.mouseIsDown) {
+				f.copyPixels(circle.bitmapData,circle.bitmapData.rect,new Point(app.stagePane.mouseX-circle.width/2.0,app.stagePane.mouseY-circle.height/2.0));
+			}
+			if (showCursor) {
+				f.draw(cursor,new Matrix(1,0,0,1,app.stagePane.scratchMouseX()+240,-app.stagePane.scratchMouseY()+180));
+			}
 		}
-		while (sounds.length>frames.length) {
-			frames.push(f);
-		}
-		if ((frames.length % 100) == 0) {
-			trace('frames: ' + frames.length + ' mem: ' + System.totalMemory);
+		while (videoSounds.length>videoFrames.length) {
+			videoFrames.push(f);
 		}
 	}
 	
