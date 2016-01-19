@@ -141,7 +141,7 @@ public class StagePart extends UIPart {
 	}
 
 	public function refresh():void {
-		if (app.runtime.ready>-1 && !stopRecordingButton.isDisabled()) {
+		if ((app.runtime.ready==ReadyLabel.COUNTDOWN || app.runtime.ready==ReadyLabel.READY) && !stopRecordingButton.isDisabled()) {
 			resetTime();
 		}
 		readouts.visible = app.editMode;
@@ -150,9 +150,9 @@ public class StagePart extends UIPart {
 		stageSizeButton.visible = app.editMode;
 		turboIndicator.visible = app.interp.turboMode;
 		fullscreenButton.visible = !app.isSmallPlayer;
-		stopRecordingButton.visible = (app.runtime.ready>-1 || app.runtime.recording) && app.editMode;
-		videoProgressBar.visible = (app.runtime.ready>-1 || app.runtime.recording) && app.editMode;
-		recordingTime.visible = (app.runtime.ready>-1 || app.runtime.recording) && app.editMode;
+		stopRecordingButton.visible = (app.runtime.ready==ReadyLabel.COUNTDOWN || app.runtime.recording) && app.editMode;
+		videoProgressBar.visible = (app.runtime.ready==ReadyLabel.COUNTDOWN || app.runtime.recording) && app.editMode;
+		recordingTime.visible = (app.runtime.ready==ReadyLabel.COUNTDOWN || app.runtime.recording) && app.editMode;
 		recordingIndicator.visible = app.runtime.recording && app.editMode;
 		
 		if (app.editMode) {
@@ -251,7 +251,7 @@ public class StagePart extends UIPart {
 		addChild(videoProgressBar);
 		
 		const versionFormat:TextFormat = new TextFormat(CSS.font, 11, CSS.textColor);
-		addChild(recordingTime = makeLabel(" 0 sec",versionFormat));
+		addChild(recordingTime = makeLabel(" 0 secs",versionFormat));
 		
 		recordingIndicator = new Shape();
 		var k:Graphics = recordingIndicator.graphics;
@@ -311,7 +311,7 @@ public class StagePart extends UIPart {
 			if (int(time)<10) {
 				timeString+=" ";
 			}
-			timeString += int(time).toString()+" sec";
+			timeString += int(time).toString()+" secs";
 			removeChild(recordingTime);
 			const versionFormat:TextFormat = new TextFormat(CSS.font, 11, CSS.textColor);
 			addChild(recordingTime = makeLabel(timeString,versionFormat));

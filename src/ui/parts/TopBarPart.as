@@ -148,7 +148,7 @@ public class TopBarPart extends UIPart {
 		editMenu.x = nextX;
 		editMenu.y = buttonY;
 		nextX += editMenu.width + buttonSpace;
-		
+
 		// cursor tool buttons
 		var space:int = 3;
 		copyTool.x = app.isOffline ? 493 : 427;
@@ -208,7 +208,7 @@ public class TopBarPart extends UIPart {
 		addChild(fileMenu = makeMenuButton('File', app.showFileMenu, true));
 		addChild(editMenu = makeMenuButton('Edit', app.showEditMenu, true));
 	}
-	
+
 	private function addToolButtons():void {
 		function selectTool(b:IconButton):void {
 			var newTool:String = '';

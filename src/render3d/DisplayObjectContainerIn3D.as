@@ -26,7 +26,7 @@ package render3d {
 
 import flash.display.Sprite;
 
-public class DisplayObjectContainerIn3D extends Sprite {SCRATCH::allow3d {
+public class DisplayObjectContainerIn3D extends Sprite {SCRATCH::allow3d{
 	import com.adobe.utils.*;
 
 	import filters.FilterPack;
@@ -447,7 +447,10 @@ public class DisplayObjectContainerIn3D extends Sprite {SCRATCH::allow3d {
 		if (textureDirty)
 			packTextureBitmaps();
 
-		__context.clear(0, 0, 0, 0);
+		// Generally the clear color will be replaced by the backdrop and/or pen layer.
+		// However, it will show when we render partially-off-stage regions for getOtherRenderedChildren().
+		// Filling these regions with white matches the behavior we get in 2D.
+		__context.clear(1, 1, 1, 1);
 
 		if (childrenChanged) {// || effectsChanged) {
 			vertexData.position = 0;
@@ -536,6 +539,7 @@ public class DisplayObjectContainerIn3D extends Sprite {SCRATCH::allow3d {
 			__context.setTextureAt(0, texture.getTexture(__context));
 			currentTexture = texture;
 		}
+
 		var desiredTextureFilter:String = useNearest ? Context3DTextureFilter.NEAREST : Context3DTextureFilter.LINEAR;
 		if (currentTextureFilter != desiredTextureFilter) {
 			__context.setSamplerStateAt(0, Context3DWrapMode.CLAMP, desiredTextureFilter, Context3DMipFilter.MIPNONE);
